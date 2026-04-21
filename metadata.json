@@ -1,0 +1,6 @@
+{
+  "name": "Eco-Grid Simulator v2.0",
+  "description": "A dynamic ecological grid simulation with biome-based migration rules, age-based stubbornness, and procedural environment generation.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
