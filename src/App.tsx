@@ -87,7 +87,7 @@ export default function App() {
     };
   }, [initGrid]);
 
-  const render = useCallback(() => {
+  const render = useCallback((progress: number = 1) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -109,7 +109,22 @@ export default function App() {
           // Age darkening
           const lightness = Math.max(30, 70 - (cell.age / 100) * 40);
           ctx.fillStyle = `hsl(${hue}, ${lightness}%)`;
-          ctx.fillRect(x * cellRenderSize + 1, y * cellRenderSize + 1, cellRenderSize - 2, cellRenderSize - 2);
+          
+          let drawX = x;
+          let drawY = y;
+          
+          // Smooth Interpolation
+          if (cell.prevX !== undefined && cell.prevY !== undefined) {
+            drawX = cell.prevX + (x - cell.prevX) * progress;
+            drawY = cell.prevY + (y - cell.prevY) * progress;
+          }
+          
+          ctx.fillRect(
+            drawX * cellRenderSize + 1, 
+            drawY * cellRenderSize + 1, 
+            cellRenderSize - 2, 
+            cellRenderSize - 2
+          );
         }
       }
     }
@@ -119,7 +134,10 @@ export default function App() {
     const currentGrid = gridRef.current;
     if (currentGrid.length === 0) return;
     
-    const nextGrid = currentGrid.map(row => row.map(cell => ({ ...cell })));
+    const nextGrid = currentGrid.map(row => row.map(cell => ({ 
+      fraction: cell.fraction, 
+      age: cell.age 
+    })));
     const order = directionRef.current;
     
     // Scan order logic
@@ -183,6 +201,8 @@ export default function App() {
           nextGrid[target.y][target.x] = {
             ...cell,
             age: Math.floor(cell.age * MIGRATION_PENALTY),
+            prevX: x,
+            prevY: y,
           };
           nextGrid[y][x].fraction = 'EMPTY';
           nextGrid[y][x].age = 0;
@@ -227,19 +247,29 @@ export default function App() {
       greenCount: finalGreen,
       emptyCount: finalEmpty,
     }));
-
-    render();
   }, [gridSize, render]);
 
   const loop = useCallback((time: number) => {
+    if (lastTickRef.current === 0) lastTickRef.current = time;
+    
     const elapsed = time - lastTickRef.current;
     const interval = 1000 / (speed / 2);
+    
+    // Calculate progress for current iteration animation
+    const progress = Math.min(1, elapsed / interval);
+    
     if (elapsed > interval) {
       tick();
       lastTickRef.current = time;
+      // Start of new iteration, render once at 0 progress
+      render(0);
+    } else {
+      // Interpolating frames
+      render(progress);
     }
+    
     animationFrameRef.current = requestAnimationFrame(loop);
-  }, [speed, tick]);
+  }, [speed, tick, render]);
 
   useEffect(() => {
     if (isRunning) animationFrameRef.current = requestAnimationFrame(loop);

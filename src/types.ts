@@ -3,6 +3,8 @@ export type Fraction = 'BLUE' | 'GREEN' | 'EMPTY';
 export interface Cell {
   fraction: Fraction;
   age: number;
+  prevX?: number;
+  prevY?: number;
 }
 
 export type Grid = Cell[][];
