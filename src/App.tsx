@@ -22,6 +22,10 @@ export default function App() {
   const [blueInitial, setBlueInitial] = useState(15); // %
   const [greenInitial, setGreenInitial] = useState(15); // %
   const [speed, setSpeed] = useState(60); // 1-100
+  
+  // Rule State: Index corresponds to neighbor count (0-8)
+  const [moveIfOwn, setMoveIfOwn] = useState<boolean[]>([true, true, true, false, false, false, false, false, false]); // Default: < 3
+  const [moveIfForeign, setMoveIfForeign] = useState<boolean[]>([false, false, true, true, true, true, true, true, true]); // Default: > 1
 
   const [stats, setStats] = useState<SimulationStats>({
     iteration: 0,
@@ -184,8 +188,8 @@ export default function App() {
         }
       }
 
-      // NEW Rules: move if ownNeighbors < 3 OR otherNeighbors > 1
-      const shouldMove = ownNeighbors < 3 || otherNeighbors > 1;
+      // CUSTOM Rules: check state arrays
+      const shouldMove = moveIfOwn[ownNeighbors] || moveIfForeign[otherNeighbors];
 
       // Stubbornness
       let finalShouldMove = shouldMove;
@@ -247,7 +251,7 @@ export default function App() {
       greenCount: finalGreen,
       emptyCount: finalEmpty,
     }));
-  }, [gridSize, render]);
+  }, [gridSize, render, moveIfOwn, moveIfForeign]);
 
   const loop = useCallback((time: number) => {
     if (lastTickRef.current === 0) lastTickRef.current = time;
@@ -354,6 +358,51 @@ export default function App() {
                 max={100} 
                 onChange={setSpeed}
               />
+
+              {/* Dynamic Rules Selection */}
+              <div className="space-y-4 pt-4 border-t border-zinc-800">
+                <div className="space-y-3">
+                  <span className="text-[9px] uppercase font-mono tracking-widest opacity-40">Pohon pri vlastných susedoch:</span>
+                  <div className="grid grid-cols-9 gap-1">
+                    {moveIfOwn.map((checked, i) => (
+                      <button
+                        key={`own-${i}`}
+                        onClick={() => {
+                          const next = [...moveIfOwn];
+                          next[i] = !next[i];
+                          setMoveIfOwn(next);
+                        }}
+                        className={`text-[10px] font-mono h-6 border rounded-sm transition-all ${
+                          checked ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-bold' : 'bg-transparent text-zinc-500 border-zinc-800 hover:border-zinc-600'
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <span className="text-[9px] uppercase font-mono tracking-widest opacity-40">Pohon pri cudzích susedoch:</span>
+                  <div className="grid grid-cols-9 gap-1">
+                    {moveIfForeign.map((checked, i) => (
+                      <button
+                        key={`foreign-${i}`}
+                        onClick={() => {
+                          const next = [...moveIfForeign];
+                          next[i] = !next[i];
+                          setMoveIfForeign(next);
+                        }}
+                        className={`text-[10px] font-mono h-6 border rounded-sm transition-all ${
+                          checked ? 'bg-zinc-100 text-zinc-950 border-zinc-100 font-bold' : 'bg-transparent text-zinc-500 border-zinc-800 hover:border-zinc-600'
+                        }`}
+                      >
+                        {i}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
 
             <div className="flex gap-2 pt-4">
@@ -413,8 +462,8 @@ export default function App() {
               <h3 className="font-serif italic text-lg text-zinc-300">Pravidlá Migrácie</h3>
             </div>
             <div className="space-y-3">
-               <RuleItem index="01" text="Presun ak: Susedia vlastnej farby < 3" />
-               <RuleItem index="02" text="Presun ak: Cudzie jednotky > 1" />
+               <RuleItem index="01" text={`MOVE IF OWN: [${moveIfOwn.map((c, i) => c ? i : null).filter(x => x !== null).join(', ')}]`} />
+               <RuleItem index="02" text={`MOVE IF OTHER: [${moveIfForeign.map((c, i) => c ? i : null).filter(x => x !== null).join(', ')}]`} />
                <RuleItem index="03" text="Pohyb na náhodné voľné susedné pole" />
                <RuleItem index="04" text="Odpor k sťahovaniu kumulovaný vekom" />
             </div>
